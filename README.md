@@ -12,5 +12,6 @@ Anaconda的安装：http://t.csdnimg.cn/QafAI
 ## 准备
 LaTex
 
-## 模版
-
+## 排版
+b站数学建模清风：【数学建模清风——论文排版教程-哔哩哔哩】https://b23.tv/188okKA
+马佬的大满贯论文合集：https://github.com/JokerZaia/mst_modelpaper

@@ -6,7 +6,7 @@
 
 # 编程
 ## 准备
-Anaconda的安装：
+Anaconda的安装：http://t.csdnimg.cn/QafAI
 
 # 论文
 ## 准备

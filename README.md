@@ -10,7 +10,8 @@
 
 ## 准备
 
-Anaconda的安装：http://t.csdnimg.cn/QafAI <br/>
+Anaconda的安装：<br/>
+http://t.csdnimg.cn/QafAI <br/><br/>
 Lingo的安装：</br>
 https://www.zdfans.com/html/46101.html#new_xzdz</br></br>
 Lingo的入门：</br>
@@ -31,5 +32,5 @@ LaTex：
 
 ## 排版
 
-b站数学建模清风：【数学建模清风——论文排版教程-哔哩哔哩】https://b23.tv/188okKA `<br/>`
-马佬的大满贯论文合集：https://github.com/JokerZaia/mst_modelpaper
+b站数学建模清风：https://www.bilibili.com/video/BV1Ci4y1c7Ld/</br>
+马佬的大满贯论文合集：https://github.com/JokerZaia/mst_modelpaper</br>

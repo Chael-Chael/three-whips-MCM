@@ -10,7 +10,8 @@
 
 ## 准备
 
-Anaconda的安装：http://t.csdnimg.cn/QafAI
+Anaconda的安装：http://t.csdnimg.cn/QafAI <br/>
+Lingo的入门：https://blog.csdn.net/weixin_44068654/category_11686404.html
 
 # 论文
 

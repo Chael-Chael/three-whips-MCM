@@ -11,7 +11,12 @@
 ## 准备
 
 Anaconda的安装：http://t.csdnimg.cn/QafAI <br/>
-Lingo的入门：https://blog.csdn.net/weixin_44068654/category_11686404.html
+Lingo的入门：https://zhuanlan.zhihu.com/p/556207002</br>
+            https://zhuanlan.zhihu.com/p/231026008</br>
+Lingo求解整数规划问题：https://blog.csdn.net/weixin_43267645/article/details/106538641</br>
+                    https://zhuanlan.zhihu.com/p/38042197</br>
+Lingo的官方文档：https://www.lindo.com/index.php/help/user-manuals</br>
+
 
 # 论文
 

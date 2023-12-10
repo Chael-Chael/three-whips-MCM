@@ -21,7 +21,11 @@ Lingo求解整数规划问题：</br>
 https://blog.csdn.net/weixin_43267645/article/details/106538641</br>
 https://zhuanlan.zhihu.com/p/38042197</br></br>
 Lingo的官方文档：</br>
-https://www.lindo.com/index.php/help/user-manuals</br>
+https://www.lindo.com/index.php/help/user-manuals</br></br>
+Matlab多目标优化算法NSGA-Ⅱ：</br>
+https://ww2.mathworks.cn/help/gads/gamultiobj.html</br></br>
+
+
 
 
 # 论文

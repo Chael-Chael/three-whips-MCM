@@ -19,10 +19,6 @@ z_axis = ones(1,36);
 z_axis(19:36) = -1;
 z_axis = kron(z_axis, ones(1, 700));
 
-%设定NSGA参数
-fitnessfcn = @getFit;  %定义适应函数
-nvars = 36*700;  %定义变量个数
-
 %设置规划
 %约束条件lb <= x <= ub
 %约束为0-1变量
@@ -35,8 +31,8 @@ weight_y = repmat(weight, 1, 36);
 volume_y = repmat(volume, 1, 36);
 ones_vector = ones(1, 36*700);
 
-A = [ones_vector; weight_y];
-b = [700; 102300];
+A = [ones_vector; weight_y; weight_y .* x_axis; weight_y .* y_axis; weight_y .* z_axis];
+b = [700; 102300; 1000; 1000; 1000];
 
 %对于每行的约束矩阵
 for i = 1:36
@@ -62,34 +58,13 @@ end
 Aeq = [];
 beq = [];
 
-nonlcon = [];
+x0 = [];
+
+f = -ones(1 : 36*700);
 intcon = 1 : 36*700;
-%设置求解器
-% 创建遗传算法的选项
-options = optimoptions('gamultiobj', ...
-    'ParetoFraction', 0.3, ...
-    'PopulationSize', 36*700*5, ...
-    'Generations', 200, ...
-    'StallGenLimit', 200, ...
-    'TolFun', 1e-10, ...
-    'PlotFcn', @gaplotpareto);
 
-[x,fval,exitflag,output,population,scores] = gamultiobj(fitnessfcn,nvars,A,b,Aeq,beq,lb,ub,nonlcon,intcon,options);
-
-plot(fval(:,1),-fval(:,2),'pr')
-xlabel('f_1(x)')
-ylabel('f_2(x)')
-title('Pareto front')
-grid on
+[x,fval,exitflag,output] = intlinprog(f,intcon,A,b,Aeq,beq,lb,ub,x0);
 
 
-function objectives = getObj(x, weight, x_axis, y_axis, z_axis)
-    obj1 = sum(x .* weight .* x_axis)^2 + sum(x .* weight .* y_axis)^2 + sum(x .* weight .* z_axis)^2;
-    obj2 = -sum(x);
 
-    objectives = [obj1, obj2];
-end
 
-function fitness = getFit(x)
-    fitness = getObj(x, weight, x_axis, y_axis, z_axis);
-end

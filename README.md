@@ -25,6 +25,7 @@ https://www.lindo.com/index.php/help/user-manuals</br></br>
 Matlab多目标优化算法NSGA-Ⅱ：</br>
 https://ww2.mathworks.cn/help/gads/gamultiobj.html</br></br>
 
+不会的自行gpt
 
 
 
@@ -32,7 +33,7 @@ https://ww2.mathworks.cn/help/gads/gamultiobj.html</br></br>
 
 ## 准备
 
-LaTex：
+LaTex；</br>https://liam.page/2014/09/08/latex-introduction/
 
 ## 排版
 

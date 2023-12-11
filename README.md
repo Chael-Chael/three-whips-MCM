@@ -10,7 +10,7 @@
 
 ## 准备
 
-Anaconda的安装：<br/>
+Anaconda的安装（自带很多科学库，装完就不用装Python了）：<br/>
 http://t.csdnimg.cn/QafAI <br/><br/>
 Lingo的安装：</br>
 https://www.zdfans.com/html/46101.html#new_xzdz</br></br>

@@ -34,5 +34,5 @@ LaTex：</br>https://liam.page/2014/09/08/latex-introduction/
 
 ## 排版
 
-b站数学建模清风：https://www.bilibili.com/video/BV1Ci4y1c7Ld/</br>
+b站数学建模清风：https://www.bilibili.com/video/BV1Ci4y1c7Ld/</br></br>
 马佬的大满贯论文合集：https://github.com/JokerZaia/mst_modelpaper</br>

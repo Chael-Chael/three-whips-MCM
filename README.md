@@ -3,6 +3,7 @@
 这是闪电三连鞭队的Github仓库，存储一些数学建模比赛的资源和内容。
 
 # 建模
+![1702357742159](image/README/1702357742159.png)
 
 马佬的Github仓库：https://github.com/JokerZaia
 
@@ -10,6 +11,8 @@
 
 ## 准备
 
+马世拓的Python建模入门：</br>
+https://github.com/ShituoMa/mathematical_modeling_python</br></br>
 Anaconda的安装（自带很多科学库，装完就不用装Python了）：<br/>
 http://t.csdnimg.cn/QafAI <br/><br/>
 Lingo的安装：</br>

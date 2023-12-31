@@ -7,6 +7,7 @@
 ![1702357742159](image/README/1702357742159.png)
 
 马佬的Github仓库：https://github.com/JokerZaia
+2024美赛准备：https://pan.baidu.com/s/1DwoUXpUGyn5u20AaPG16Yg?pwd=29b4
 
 # ⌨️编程
 

@@ -1,0 +1,491 @@
+%! Mode:: "TeX:UTF-8"
+%! TEX program = xelatex
+\PassOptionsToPackage{quiet}{xeCJK}
+\documentclass[withoutpreface,bwprint]{cumcmthesis}
+\usepackage{etoolbox}
+\BeforeBeginEnvironment{tabular}{\zihao{-5}}
+\usepackage[numbers,sort&compress]{natbib}  % 文献管理宏包
+\usepackage[framemethod=TikZ]{mdframed}  % 框架宏包
+\usepackage{url}  % 网页链接宏包
+\usepackage{subcaption}  % 子图宏包
+\usepackage{multirow}
+\usepackage{booktabs}
+\newcolumntype{C}{>{\centering\arraybackslash}X}
+\newcolumntype{R}{>{\raggedleft\arraybackslash}X}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+
+\title{基于WiFi的室内定位问题}  % 论文标题
+\tihao{B}  % 题号
+\baominghao{2024019}  % 报名号
+\schoolname{华中科技大学}  % 学校
+\membera{朱晨宇}  % 队员a
+\memberb{周羽涵}  % 队员b
+\memberc{毛晟杰}  % 队员c
+\supervisor{}  % 指导老师
+\yearinput{2024}
+\monthinput{8}
+\dayinput{12}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 正文
+\begin{document}
+\maketitle
+\begin{abstract}
+室内定位技术作为定位系统的补充，在导航、资产跟踪和个性化服务等方面有着很大的应用潜力和价值，而WiFi作为最常用的无线通信协议，在各建筑物内部几乎全覆盖，因此利用WiFi实现室内定位具有很大的研究意义和价值。
+
+对于问题一，在射频直连的理想场景下，相位偏移仅由OFDM子载波的不同频率造成。利用飞行时间(ToF)引入的相位偏移，对信道状态信息(CSI)处理后线性拟合即可估计ToF值，得到\textbf{ToF的预估值为10ns}。
+
+问题二在问题一的基础上延展到二维空间，解决信号多径的非射频直连定位问题。通过改进传统MUSIC算法，将OFDM子载波视作天线阵列传感器，借鉴空间平滑算法的流程，对CSI矩阵中的传感器阵列划分为子阵列，完成基于MUSIC算法的AoA-ToF联合估计，我们最终得到的\textbf{A点的坐标为 (10.67, -3.59) 或 (10.67,5.59)}。对于AoA角度不准确的问题，我们推测其原因为接受数据的快拍数不足，导致可利用数据量降低，并进行了初步的验证。
+
+问题三考虑实际情况误差影响，恢复真实相位数据。对于采样时间偏移（STO）、采样频率偏移（SFO）与包检测时延（PDD），在解卷绕后可采用线性消除处理，而后采用时间拓展的MUSIC算法，在修正后的数据基础上构造MUSIC谱并搜索谱峰，最终得到\textbf{消除误差前求得的ToF为1.51ns，消除误差后的ToF为74.7ns}。
+
+\keywords{\textbf{室内定位\quad  WiFi\quad  MUSIC算法\quad  时间拓展MUSIC算法\quad AoA-ToF联合估计}}
+\end{abstract}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+\section{问题重述}
+\subsection{问题背景}
+党的十八大以来，科技强国驶入“快车道”，北斗系统全球成功组网，极大保障了国家安全，促进了民生福祉，而到了复杂的建筑物内部，一般的定位系统不能满足定位需求，此时需要应用室内定位。除快速定位寻找目标外，室内定位还可用于应急救援、用户画像市场精确分析、智能建筑管理、增强现实体验等等，具有丰富的现实应用价值。
+
+而随着互联网的广泛普及、物联网时代的加速到来，WiFi作为最常用的无线通信协议，已在各家庭和几乎所有公共场所中得到部署，因此，WiFi室内定位技术因其高覆盖、高灵敏、低成本等优势脱颖而出，基本原理是利用信号飞行时间（ToF）乘以光速，然后运用三角定位等方法估计出用户所处位置。
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+\subsection{问题提出}
+基于附件我们需要建立数学模型解决以下问题：
+
+（1）考虑理想状况，假设信号射频直连，且仅有一条路径，根据所给定的信道状态信息数据（Channel State Information, CSI），计算预估飞行时间（Time of Flight, ToF）。
+
+（2）在（1）的理想模型基础上，应用到实际二维空间平面，通过两已知坐标点接收到的CSI数据，分析多径传播问题，计算ToF进而确定信号发射源的位置。
+
+（3）实际应用中会产生采样时间偏移（Sampling Time Offset, STO）、采样频率偏移（Sampling Frequency Offset, SFO）、包检测时延（Packet Detection Delay, PDD）、IQ（In-phase and Quadrature，同相分量和正交分量）不平衡非线性误差等影响，要求考虑实际存在的部分误差，在排除了中心频率偏移的影响过后，根据实际射频直连测试CSI数据分析误差的可能情况及其影响，还原真实的CSI数据求得ToF。
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+\section{问题分析}
+\subsection{问题一分析}
+对于问题一，这是一个信号系统的建模问题。在射频直连的单路径的无误差理想场景下，相位偏移仅由OFDM（正交频分复用）不同信号频率本身产生，天线位置对相位无影响，求解ToF的估计值可直接应用线性拟合求解。
+
+\subsection{问题二分析}	
+问题二在问题一的基础上拓展到基础平面空间，不再是射频直连的模式，这会带来传统的多重信号分类（MUltiple SIgnal Classification, MUSIC）算法无法完全解析各路信号到达角度（Angle of Arrival, AoA）的问题，因而我们需要对传统MUSIC算法模型进行优化：利用CSI子载波信息拓展WiFi天线数，基于CSI构建AoA-ToF联合估计算法，再利用协方差矩阵的特征值分解，将信号子控件与噪声子空间区分，再借鉴空间平滑算法的流程，解决WiFi阵列天线数量不足的问题。
+
+\subsection{问题三分析}
+对于问题三，误差影响导致的STO、SFO与PDD问题，可采用线性消除：将相位两两作差，用平均值代替异常值处理；部分区域子载波进行STO补偿计算，线性拟合消除，而对噪声较大处直接采用步长为3的平滑处理函数。最终的ToF求解，可采用时间拓展的MUSIC算法，修正CSI数据后构造MUSIC谱，搜索谱峰确定估计的ToF值。
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+
+\section{模型假设}
+为使问题得到简化，我们适当作出如下假设：
+
+\begin{itemize}[itemindent=2em]
+\item 假设1：模型满足远场条件，即信号发射源到天线阵列距离L远大于天线阵列间距d，天线呈线性排列，天线间距为中心频率对应波长的一半。信号近似平行射入天线，这一假设为MUSIC算法的理想假设条件，有助于我们对信号的估计。
+\item 假设2：在问题一和问题二中不含噪声背景，子载波没有幅度衰减，这一假设为问题给定。
+\item 假设3：在问题一和问题三的模式为射频直连模式，这一假设为问题给定。
+\item 假设4：在问题三中，24个时刻是等间隔的。
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+\section{符号说明}
+我们对正文中出现的符号进行一些说明，文中所使用的符号及其定义如表1所示。其余有符号没有列在表1中，将在每个部分作详细讨论和说明。
+
+\begin{table}[h]
+\begin{center}
+\caption{符号说明及表示}
+\vspace{0mm}
+\begin{tabular}{cc}
+\toprule[2pt]
+\textbf{\large{符号}} & \textbf{\large{说明}} \\ 
+\midrule
+$\Delta f$ & 子载波间隔\\
+$N$ & 导向矢量中子载波的个数\\
+$\tau$ & ToF（飞行时间）\\
+$\theta$ & AoA（到达角度）\\
+$\alpha_{m}$ & 复数幅度衰减\\
+$\phi_{m}(t,f)$ & 相位偏差\\
+$c$ & 真空光速\\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+\section{问题一的模型的建立和求解}
+\subsection{模型建立}
+问题一的相位差变化仅由OFDM子载波的不同频率造成，ToF能在OFDM子载波上引入显著的相位偏移\upcite{陈浩翔}：假设某路信号的ToF为$\tau$，则第$k$个子载波与第$m$个子载波之间由$\tau$引起的相位偏移为$-2\pi(k-m)\Delta f\tau$，这是一个可供测量的相位偏移大小。
+
+子载波间隔$\Delta f$由系统总带宽$B$除以子载波数量$N$得到。考虑OFDM信号的一组子载波，其导向矢量为：
+\begin{equation}
+    \overrightarrow{a}(\tau)=\lbrack1,\Omega_{\tau}^{1},\dots,\Omega_{\tau}^{N-1}\rbrack \qquad \qquad \Omega_{\tau}=e^{-j2\pi \Delta f \tau}
+\end{equation}
+
+已知子载波间隔$\Delta f=312.5KHz$，由相邻子载波相位差$\Delta\varphi=2\pi\Delta f\tau_{ToF}$得：
+\begin{equation}
+    \tau_{ToF}=\frac{\Delta\varphi}{2\pi\Delta f}
+\end{equation}
+
+ToF的估计求解可根据式（2）线性拟合求得。
+
+\subsection{模型求解及结果}
+理想情况下，射频直连的单路径场景下CSI为：
+\begin{equation}
+    H(t,f)=e^{j\phi_{m}(t,f)}
+\end{equation}
+
+基于给出的8个天线收集到的256个子载波CSI数据（编号[1,6][128,130][251,256]子载波未使用），将复数由代数形式转换至相位幅值，得到CSI相频响应如图所示：
+
+\begin{figure}[h]
+\caption{CSI相频响应} \label{fig:aa}
+\centering
+\includegraphics[width=11cm]{figures/T1 CSI相频响应.jpg}
+\end{figure}
+
+对8组天线CSI子载波相位数据作线性回归，得到拟合斜率为$-0.019635$，$R^2=1$，拟合效果较好。
+
+代入式（2）可求得ToF的估计值为$10ns$。
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+\section{问题二的模型的建立和求解}
+\subsection{基于MUSIC算法的AoA-ToF联合估计}
+
+问题二模式不为射频直连，$B$、$C$两组天线均为平行排列，且已知天线阵元间隔为半波长。传统的运用线性多天线阵列进行估计的方法为MUSIC算法，其基本思想是不同传播路径具有不同的AoA，信号传播到天线阵列时会在不同天线上产生相位偏移，而引入的相位偏移即为天线间距和AoA的函数。
+
+\begin{figure}[h]
+\caption{MUSIC算法估计模型} \label{fig:aa}
+\centering
+\includegraphics[width=9cm]{figures/MUSIC示意图.png}
+\end{figure}
+
+如图2，第2根天线比第1根多传播$d\cdot sin\theta$的路径，也即存在$e^{-j2\pi fd\cdot sin\theta/c}$的相位偏移，从而易得第$M$根天线与第1根尖存在$e^{-j2\pi f(M-1)d\cdot sin\theta/c}$的相位偏移，而天线阵列间距已知为半波长，故相位偏移是AoA的函数，AoA即可由相位信息计算得到。
+
+一般地，假设天线数为$M$，有$L$条传播路径到达接收端，AoA分别为${\theta_{1},\theta_{2},\dots,\theta_{L}}$，$s_{l}(t)$表示第$l$路信号，$f_{0}$为中心频率，$d$为天线间距，$n_{m}(t)$为第$m$根天线处噪声，则第$m$根天线接收信号可表示为:
+
+\begin{equation}
+    x_{m}(t)=\sum_{l=1}^{L}s_{l}(t)e^{-j2\pi f_{0}(m-1)d\cdot sin\theta_{l}/c}+n_{m}(t)
+\end{equation}
+
+根据问题二条件，$d=\lambda/2$，$n_{m}(t)=0$，将接收端的接收信号表示为所有天线接收到信号的叠加，则得到式5：
+
+\begin{equation}
+    r(t)=\sum_{l=1}^{L}\sum_{m=1}^{M}s_{l}(t)e^{-j2\pi f_{0}(m-1)d\cdot sin\theta_{l}/c}=\sum_{l=1}^{L}a(\theta_{l})s_{l}(t)
+\end{equation}
+
+其中 $r(t)=[x_{1}(t),x_{2}(t),\dots,x_{M}(t)]^{T}$为$M\times1$的接收信号向量，天线阵列在到达角度$\theta_{l}$上的方向向量$a(\theta_{l})=[1,e^{-j2\pi f_{0}d\cdot sin\theta_{l}/c},e^{-j2\pi f_{0}\cdot 2d\cdot sin\theta_{l}/c},\dots,e^{-j2\pi f_{0}(M-1)d\cdot sin\theta_{l}/c}]^{T}$，可构成方向矩阵$A=[a(\theta_{1}),a(\theta_{2}),\dots,a(\theta_{L})]^{T}$，从而简化为：
+
+\begin{equation}
+    r(t)=As(t)
+\end{equation}
+
+$A$为$M\times L$的范德蒙矩阵，$s(t)=[s_{1}(t),s_{2}(t),\dots,s_{L}(t)]^{T}$是$L$路信号向量。
+
+在MUSIC算法中，有效运行的前提是矩阵满秩，各传播路径线性无关，且传播路径数$L$必须小于阵列天线数$M$，否则矩阵的秩会超出定义范围，然而问题二给出的天线数小于传播路径数，因而传统的MUSIC算法不能对路径解析完全。根据Kotaru等人研究的SpotFi模式\upcite{Spotfi}，OFDM子载波也可以作为天线阵列中的传感器，从而突破硬件天线数量的限制。
+
+我们采用AoA-ToF联合估计，利用AoA在天线之间引入相位偏移，用ToF在子载波之间引入相位偏移。第$k$个子载波和第$1$个子载波之间由$ToF=\tau$引起的相位偏移为$-2\pi(k-1)\Delta f\tau$，引入子载波间因ToF产生的可供测量的相位偏移后，可将天线CSI与相位偏移数据共同嵌入MUSIC算法的数学模型中，从而拓展接收信号向量$r(t)$的维度。
+
+将AoA在相邻天线间引起的相位偏移$\Phi(\theta)$和ToF在相邻子载波间引起的相位偏移$\Omega(\tau)$均化为复指数函数表达式如下：
+
+\begin{equation}
+    \Phi(\theta)=e^{-j2\pi fd\cdot sin\theta/c}
+\end{equation}
+
+\vspace{-0.5cm}
+
+\begin{equation}
+    \Omega(\tau)=e^{-j2\pi \Delta f\tau}
+\end{equation}
+
+假设$M×N$维列向量$Y(l)$是接收端的接收信号向量，表征对于第$l$路信号，$M$个天线对$N$个子载波的信号测量值,：
+
+\begin{equation}
+    Y(l)=[csi_{1,1},csi_{1,2},\dots,csi_{1,N},\dots,csi_{M,1},\dots,csi_{M,N}]^{T}
+\end{equation}
+
+若信号通过$L$条传播路径到达接收端，定义$L$路信号向量：
+
+\begin{equation}
+    y=[y_1,y_2,\dots,y_{L}]^{T}_{L\times 1}
+\end{equation}
+
+用$A$表示$L$路信号的方向矩阵，不考虑噪声背景，接收信号向量$Y$与$L$路信号$y$之间的关系为：
+
+\begin{equation}
+    Y_{M×N\times1}=A_{M×N\times L}\cdot y_{L\times1}
+\end{equation}
+
+矩阵$A$：
+\begin{equation}
+    A=[a(\theta_1,\tau_1),\dots,a(\theta_l,\tau_l),\dots,a(\theta_L,\tau_L)]_{8\times L}
+\end{equation}
+
+\begin{figure}[h]
+\caption{入射信号转向向量} \label{fig:aa}
+\centering
+\includegraphics[width=11cm]{figures/AoA-ToF.png}
+\end{figure}
+
+其中，$a(\theta_{l},\tau_{l})$为第$l$条入射信号的相对相位偏移量，即转向向量。用$\theta_{l}$表示第$l$条入射信号的AoA，用$\tau_{l}$表示第$l$条入射信号的ToF，再将式$(7)$式$(8)$代入如图3所示，按列展开后合并，可得第$l$条入射信号的转向向量$a(\theta_{l},\tau_{l})$为：
+
+\begin{equation}
+    a(\theta_{l},\tau_{l})=[1,\dots,\Omega(\tau_{l})^{7},\Phi(\theta_{l}),\dots,\Phi(\theta_{l})\Omega(\tau_{l})^{7},\Phi(\theta_{l})^2,\dots,\Phi(\theta_{l})^2\Omega(\tau_{l})^{7}]^{T}_{8\times1}
+\end{equation}
+
+对$Y$求协方差矩阵$R=E[YY^H]$，对$R$特征分解得到$M×N$个特征值，在各路信号两两线性无关的条件下，较大的特征值对应信号空间，较小的特征值对应噪声空间。取较小的特征向量组成噪声空间$E_{n}$，则噪声空间与导向向量正交，可以通过搜索空间谱的方式得到导向向量
+
+空间谱函数$P_{MUSIC}(\theta,\tau)$为：
+\begin{equation}
+    P_{MUSIC}(\theta,\tau)=\frac{1}{a^H(\theta,\tau)E_{n}E_{n}^Ha(\theta,\tau)}
+\end{equation}
+
+其中$a^H(\theta,\tau)$为$a(\theta,\tau)$的共轭转置矩阵，此时通过变化的$\theta$和$\tau$的值搜索谱函数谱峰，即可联合估计出传播路径的AoA和ToF。
+
+在第二问的室内且非射频直连的环境中，可能会出现相干的多径信号。为达到解相干信号的目的，我们采用空间平滑算法的思想，其核心在于保证$L$路信号的自相关矩阵满秩，因此借鉴空间平滑算法的流程，对CSI矩阵中的传感器阵列划分子阵列。
+
+如图4所示，以一个3×30的传感器阵列为例，我们以2×15的大小划分子阵列，每个子阵列由2根天线上的15个子载波组成。子阵列从红色框开始，以红色箭头的方向从左至右由上至下进行平滑，蓝色框为最末尾的CSI阵列。
+\begin{figure}[h]
+\caption{CSI矩阵子阵列划分示意} \label{fig:aa}
+\centering
+\includegraphics[width=9cm]{figures/CSI_window.png}
+\end{figure}
+根据推导可知，32个不同的CSI阵列均可以写成同一个方向向量$A_1$的线性组合：
+
+\begin{equation}
+    A_{1}=[a_{1}(\theta_1,\tau_1),\dots,a_{1}(\theta_l,\tau_l),\dots,a_{1}(\theta_L,\tau_L)]_{30\times L}
+\end{equation}
+
+故完成子阵列划分后，将子阵列拼合为一个空间平滑矩阵$CSI_{SS}$，对接收信号向量平滑解相干后应用基于CSI的AoA-ToF联合估计算法等价于对该矩阵$CSI_{SS}$直接应用MUSIC算法，便可以求解各路相干信号的AoA和ToF。
+
+\begin{equation}
+CSI_{ss} = \begin{bmatrix}
+csi_{1,1} & csi_{1,2} & \cdots & csi_{1,16} & csi_{2,1} & \cdots & csi_{2,16} \\
+csi_{1,2} & csi_{1,3} & \cdots & csi_{1,17} & csi_{2,2} & \cdots & csi_{2,17} \\
+\vdots & \vdots & \ddots & \vdots & \vdots & \ddots & \vdots \\
+csi_{1,15} & csi_{1,16} & \cdots & csi_{1,30} & csi_{2,15} & \cdots & csi_{2,30}  \\
+csi_{2,1} & csi_{2,2} & \cdots & csi_{2,16} & csi_{3,1} & \cdots & csi_{3,16} \\
+\vdots & \vdots & \ddots & \vdots & \vdots & \ddots & \vdots \\
+csi_{2,15} & csi_{2,16} & \cdots & csi_{2,30} & csi_{3,15} & \cdots & csi_{3,30}\\
+\end{bmatrix}
+\end{equation}
+
+\subsection{模型求解}
+
+对于B点和C点的CSI数据，按照所给的载波编号，取子载波编号为7-126、天线个数为8的连续片段使用空间平滑的AoA-ToF联合算法。取大小为2×15的CSI子阵列，每个阵列由2根天线上的15个子载波组成。以横向和纵向均为1的步长移动阵列窗口，直至获得742个可用子阵列。
+
+将子阵列拼合成CSI平滑矩阵，对该矩阵使用空间平滑的AoA-ToF联合算法，可以得到AoA-ToF联合估计算法空间谱函数如图5(a)和图5(b)。搜索并获取图中的峰值即可得到接收信号的AoA和ToF。
+
+\begin{figure}
+\centering
+\subcaptionbox{B点处空间谱函数\label{fig:b}}
+{\includegraphics[width=.49\textwidth]{figures/Bspot.png}}
+\subcaptionbox{C点处空间谱函数\label{fig:c}}
+{\includegraphics[width=.49\textwidth]{figures/Cspot.png}}
+\caption{所得AoA-ToF联合估计算法空间谱函数}\label{fig:空间谱函数}
+\end{figure} 
+
+但是在实验中我们发现，在采用使用空间平滑的AoA-ToF联合算法时，经常会出现AoA角度估计偏移的问题，导致AoA的角度估计不够准确，具体表现为B点和C点的AoA集中于0.6°左右，于是我们采用ToF进行信源位置A的估计。搜索空间谱峰值可以得到B点的ToF=3.57*10-8s，C点的ToF=1.90*10-8s。由此可以得到A点与B点和C点的直线距离为10.71m和5.7m。
+
+根据以上数据求解如下方程组，可以得到A点的坐标为(10.67, -3.59)或(10.67,5.59) （结果保留两位小数）。
+
+\begin{align}
+\sqrt{(X - 1)^2 + (Y - 1)^2} &= x \\
+\sqrt{(X - 7.3)^2 + (Y - 1)^2} &= y
+\end{align}
+
+经过文献查阅\upcite{doa}，我们对AoA角度不准确的情况作了进一步研究。我们推测AoA角度估计不准确的原因可能是因为接收数据的快拍数（特定的时间内从接收天线阵列中获取的信号样本的数量）不足，导致可利用数据量降低，使用该算法的分辨率下降。
+
+为了验证我们的猜想，我们设定了四路非相干信号到达接收端，将四路信号的AoA和ToF分别设置为$\{-20°,-35°,50°,65°\}$和$\{10ns, 30ns, 5ns, 33ns\}$，并分别设置快拍数为512和1，观察快拍数改变对空间谱函数的影响。图5展示了使用空间平滑的AoA-ToF联合算法的仿真结果。通过图6(a)和图6(b)的对比可以看出，在快拍数较大的情况下，该算法可以准确地获得各路信号的AoA和ToF，但是当快拍数降低为1，算法的分辨率下降较大，已经无法分辨出各路信号。
+
+在本题中，提供的数据均为单快拍数据，故会出现AoA和ToF估计不准确的问题。针对单快拍分辨率不足的问题，我们继续研究了基于单快拍修正的MUSIC算法，但是结果表现依然不够出色，可以作为未来的研究方向。
+\begin{figure}
+\centering
+\subcaptionbox{快拍数为512的空间谱函数\label{fig:b}}
+{\includegraphics[width=.49\textwidth]{figures/T2-K512.png}}
+\subcaptionbox{快拍数为1的空间谱函数\label{fig:c}}
+{\includegraphics[width=.49\textwidth]{figures/T2-K1.png}}
+\caption{快拍数对AoA-ToF联合估计算法的影响}\label{fig:快拍}
+\end{figure} 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+\newpage
+\section{问题三的模型的建立和求解}
+\subsection{误差的分布情况及其消除}
+STO、SFO与PDD本质上等同于时间延迟，会导致CSI相位旋转误差，表现为与子载波索引成比例的旋转误差加上CSI相位中的偏移。STO指采样器对信号采样时实际采样时间与预定采样时间间的偏差，SFO即实际采样频率与理论采样频率的差异，PDD指数据包开始到被检测并识别为有效数据包所需的时延，包括数据传输、处理和检测的总时间。
+
+消除误差、恢复真实相位数据的第一步是解卷绕操作，展开复数中的弧度相位角，当连续相位角间跳跃$\geq\pi$，解卷绕会通过$\pm 2k\pi,k\in Z$来平移相位角，使跳跃$<\pi$，从而能够去除不连续的跳变，恢复相位的连续变化。为减少不同子载波相位发生的漂移，采用先进行时间域解卷绕、再进行子载波域解卷绕的方式\upcite{电子科大}，这是由于子载波间相位包含了ToF信息，先对子载波解卷绕会使CSI子载波相位差发生变化。
+
+得到解卷绕的相位数据后，采用线性消除的方法还原真实CSI数据。
+
+\begin{enumerate}
+    \item 在噪声较大处直接采用步长为3的平滑处理函数，这样能够有效平滑高频噪声，通过对邻近值的考虑减少了随机噪声的影响，同时步长的适中能够保持信号的主要特征，能够较好的平衡噪声减少和信号保真之间的关系。
+    \item 由于各时刻是等间隔的，可将相位差两两作差，消除信号的周期性误差、系统性误差，用平均值代替异常值，平滑掉部分噪声并保持主要趋势，进行相位处理。
+    \item 由于采样时间延迟相等，STO对采样数据的影响是线性的，可对部分区域子载波进行STO补偿计算，进行线性拟合建立模型描述STO引起的频率偏移，消除STO影响。
+    
+\end{enumerate}
+
+\begin{figure}
+\centering
+\subcaptionbox{解卷绕后的相位和消除噪声后的相位曲线\label{fig:双图a}}
+{\includegraphics[width=.49\textwidth]{figures/CSI相位.png}}
+\subcaptionbox{真实值与实际值的相位差曲线\label{fig:双图b}}
+{\includegraphics[width=.49\textwidth]{figures/真实值与实际值相位差.png}}
+\caption{相位曲线图}\label{fig:双图}
+\end{figure} 
+
+\begin{figure}
+\centering
+\subcaptionbox{处理前CSI-5的24时刻幅度\label{fig:双图a}}
+{\includegraphics[width=.49\textwidth]{figures/CSI-5的24个时刻幅度表.png}}
+\subcaptionbox{平滑处理后的CSI-5的24时刻幅度\label{fig:双图b}}
+{\includegraphics[width=.49\textwidth]{figures/平滑处理后的CSI5的24个时刻幅度图.png}}
+
+\caption{CSI-5处理前后的24时刻幅度}\label{fig:1233}
+\end{figure} 
+
+对于第n个子载波上的相位可以表示为：
+\begin{equation}
+    \psi_n=\widetilde{\psi_n}-2\pi\frac{K_n}{N}\alpha+\beta+Z
+\end{equation}
+
+其中$\psi_n$表示第n个子载波的测量相位，$\widetilde{\psi_n}$表示第n个子载波的真实相位，N为子载波的总数,${K_n}$为第n个子载波编号，$\alpha$为时钟同步误差，Z为随机相位误差，$\beta$为与天线有关的常数相位误差。
+Z影响较小，测量相位与真实相位主要误差来源为时间同步误差和天线造成的相位误差。考虑用线性拟合来消除误差$\alpha和\beta$。
+\begin{equation}
+    a=\frac{\psi_n-\psi_1}{K_n-K_1}
+\end{equation}
+
+\begin{equation}
+    b=\frac{1}{n}\sum_{i=1}^{n}\psi_i
+\end{equation}
+
+\begin{equation}
+    \widetilde{\psi_n}=\psi_n-(aK_n+b)
+\end{equation}
+
+消除后的相位为：
+\begin{equation}
+    \widetilde{\psi_n}=\psi_n-\frac{K_n}{K_n-K_1}(\psi_n-\psi_1)-\frac{1}{n}\sum_{i=1}^{n}\psi_i-\frac{2\pi}{nN}\alpha\sum_{i=1}^{n}K_i
+\end{equation}
+将编号变成-120至+120，可知$\sum_{i=1}^{n}\psi_i=0$
+故可写成：
+\begin{equation}
+    \widetilde{\psi_n}=\psi_n-\frac{K_n}{K_n-K_1}(\psi_n-\psi_1)-\frac{1}{n}\sum_{i=1}^{n}\psi_i
+\end{equation}
+
+
+\subsection{ToF求解}
+我们将仅使用单天线进行ToF估计，根据尚云飞\upcite{电子科大}的研究，可以采用扩展时间维度的CSI定位估计算法，基于这样的思想，我们考虑所有可以得到的总计$K$个子载波的CSI数据组成的向量，根据子载波均分的特性可以建模为$\textbf{u}(k,n)$：
+\begin{equation}
+    \textbf{u}(k,n)=[\widetilde{CSI}(k,n),\widetilde{CSI}(k-1,n),\dots,\widetilde{CSI}(k-K,n)]^T
+\end{equation}
+基于上述思想构造CSI的自相关矩阵，估计如下：
+\begin{equation}
+    \textbf{R}=E[\textbf{u}(k,n)\textbf{u}^{H}(k,n)]=\frac{1}{N}\sum^N_{n=1}\textbf{u}(k,n)\textbf{u}^{H}(k,n)
+\end{equation}
+
+对$\textbf{R}$特征值分解：
+\begin{equation}
+    \textbf{R}=\textbf{UQV}^{*}
+\end{equation}
+
+分解后的对角矩阵$\textbf{Q}$形式为：
+\begin{equation}
+\textbf{Q}=diag(\beta_1,\beta_2,\dots,\beta_{K'},0,\dots,0)
+\end{equation}
+
+对于$K'$个非零特征值，降序排列$\beta_1\geq\beta_2\geq\dots\geq\beta_{K'}$，根据特征值是否接近于0将信号分为信号子空间$U_S$与噪声子空间$U_N$，不同路径上的总时延$\tau=\tau_i+\tau_{STO}+\tau_{PDD}$包含在信号子空间中。则构造引导向量$\vec{S_K}(\tau)$：
+\begin{equation}
+    \vec{S_K}(\tau)=[e^{-j2\pi f_0\tau},e^{-j2\pi f_01\tau},\dots,e^{-j2\pi f_K\tau}]^T
+\end{equation}
+
+用$\textbf{U}_n$表示噪声子空间的基向量构成的、维度为$(K-K')\times K$的矩阵，构造MUSIC谱如下：
+\begin{equation}
+    D(\tau)=\frac{1}{||\textbf{U}_n^*\vec{S_K}(\tau)||_2}
+\end{equation}
+
+用$\widehat{\tau}_{offset}=\widehat{\tau}_{STO}+\widehat{\tau}_{PDD}$修正前文的$\textbf{u}(k,n)$，为：
+\begin{equation}
+    \widehat{\textbf{u}}(n)=\textbf{u}(n)e^{j2\pi n\Delta f\widehat{\tau}_{offset}}
+\end{equation}
+
+在测试良好情况下，特征值整体较大，MUSIC谱中仅出现一个较强的单峰值，最终通过谱峰搜索找到估计的ToF，即$\widehat{\tau}=argmax_{\tau}\widehat{D}(\tau)$。
+
+\begin{figure}
+\centering
+\subcaptionbox{}
+{\includegraphics[width=.49\textwidth]{figures/MUSIC谱.png}}
+\subcaptionbox{}
+{\includegraphics[width=.49\textwidth]{figures/figure3.png}}
+\caption{MUSIC谱图}\label{fig:双图}
+\end{figure} 
+
+在上述过程，PDD、STO和SFO均产生了噪声，导致了相位的变化，射频的偏移，造成了一定的误差，使得ToF的求解有部分偏移改变。
+将消除噪声前的CSI值，与相位调整消除噪声后的CSI值均使用时间拓展的MUSIC算法。
+通过对{D}$(\tau)$的计算，在不同的时间延迟下选取峰值点，进行谱峰搜索，得到消除误差之前求得的TOF值为1.51$ns$，消除误差之后求得的ToF值为74.7$ns$。
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{模型的评价}
+
+\subsection{模型的优点}
+综合上述的模型建立与求解，我们认为我们的模型有如下优点：
+
+\begin{enumerate}
+    \item 以ToF引入的相位偏移作为观测，问题一的解决充分利用子载波间隔的恒定性采用线性拟合求解ToF，直截了当，过程简单，计算效率高且易于实现。
+    \item 对传统MUSIC算法作出改进，将OFDM子载波作为天线阵列传感器突破硬件限制，联合估计AoA和ToF，有足够的理论支撑，准确而巧妙的解决了问题，易于理解。
+    \item 改进后的算法能够处理更多的信号和噪声，提高了对CSI的解析能力，改善了ToF和AoA估计的准确性，有更强的适应性。
+    \item 结合使用多种处理技术手段，能够更全面地处理各种误差和噪声问题，提高了ToF估计的准确性和鲁棒性。
+\end{enumerate}
+
+\subsection{模型的缺点}
+尽管模型已经表现出比较良好的特征，但仍存在一些问题：
+
+\begin{enumerate}
+    \item 模型较难以检验。
+    \item 模型假设的理想条件较多，现实性有所不足，如问题一和问题三未考虑天线位置和多径效应对相位的影响，无法准确反映实际情况中的信号特性。
+    \item 问题二模型的算法性能高导致估计效果过度依赖CSI数据的质量，CSI数据不准确会导致估计结果误差较大，同时优化调整增加了实施的复杂性和调试难度。
+    \item 虽然对误差有足够的处理，但在高噪声环境下算法的性能仍可能受到较大影响，需要进一步的优化。
+\end{enumerate}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\begin{thebibliography}{99}  
+
+\bibitem{陈浩翔}陈浩翔.基于Wi-Fi信道状态信息的室内定位算法研究[D].华南理工大学,2019.
+\bibitem{Spotfi}Kotaru M., Joshi K., Bharadia D., et al. Spotfi: Decimeter level localization using wifi[A]. ACM SIGCOMM Computer Communication Review[C]. London: ACM, 2015:269-282
+\bibitem{doa}谢鑫,李国林,刘华文.采用单次快拍数据实现相干信号DOA估计[J].电子与信息学报,2010,32(3):604-608.
+\bibitem{电子科大}尚云飞.基于WiFi的室内定位研究[D].电子科技大学,2023.
+\bibitem{pisplicer} Hongzi Zhu, et al.pi-Splicer: Perceiving Accurate CSI Phases with Commodity WiFi Devices[J].IEEE TRANSACTIONS ON MOBILE COMPUTING,2018,17(9):2155-2165.
+\bibitem{schmidt}SCHMIDT,RO.MULTIPLE EMITTER LOCATION AND SIGNAL PARAMETER-ESTIMATION[J].IEEE TRANSACTIONS ON ANTENNAS AND PROPAGATION,1986,34(3):276-280.
+\bibitem{dihe}He,Di et al.3-D Spatial Spectrum Fusion Indoor Localization Algorithm Based on CSI-UCA Smoothing Technique[J].IEEE ACCESS,2018,6:59575-59588.
+\bibitem{huq}林云,胡强.多测量向量模型下的修正MUSIC算法[J].电子与信息学报,2018,40(11):2584-2589.
+
+\end{thebibliography}
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 附录
+\begin{appendices}
+\section{文件列表}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{LL}
+\toprule
+文件名   & 功能描述 \\
+\midrule
+T1.m & 问题一程序代码 \\
+T2$\_$cal.m & 问题二程序代码 \\
+T2$\_$final.m & 问题二程序代码 \\
+average$\_$filter.m & 问题三程序代码 \\
+T3.m & 问题三程序代码 \\
+T2-B.png & B点处空间谱函数图 \\
+T2-C.png & C点处空间谱函数图 \\
+其余文件(PDF) & 参考文献 \\
+\bottomrule
+\end{tabularx}
+\label{tab:文件列表}
+\end{table}
+
+\section{代码}
+\noindent T1.m
+\lstinputlisting[language=matlab]{code/T1.m}
+T2$\_$cal.m
+\lstinputlisting[language=matlab]{code/T2_cal.m}
+T2$\_$final.m
+\lstinputlisting[language=matlab]{code/T2_final.m}
+average$\_$filter.m
+\lstinputlisting[language=matlab]{code/average_filter.m}
+T3.m
+\lstinputlisting[language=matlab]{code/T3.m}
+
+\end{appendices}
+\end{document}
